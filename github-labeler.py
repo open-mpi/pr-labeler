@@ -31,22 +31,32 @@ if (GITHUB_BASE_REF is None or
 
 # ==============================================================================
 
-# Given a pullRequest object, the function checks what labels are currently on
-# the pull request, removes any matching the form "Target: {branch}" (if
-# {branch} is not the current target branch), and adds the correct label.
-def ensureLabels(pullRequest):
+# Given a pullRequest object and list of existing labels, the function checks
+# what labels are currently on the pull request, removes any matching the form
+# "Target: {branch}" (if {branch} is not the current target branch), and adds
+# the correct label.
+#
+# Because the GH API automatically creates a label when applying it (if it
+# doesn't exist), we try to get a label object to check if the label has been
+# created before we add (and create) it ourselves.
+def ensureLabels(pullRequest, repo):
     needsLabel = True
     targetPrefix = "Target: "
     targetLabel = f"{targetPrefix}{GITHUB_BASE_REF}"
+    try:
+        repo.get_label(targetLabel)
+    except:
+        print(f"Label '{targetLabel}' not found")
+        return None
     for label in pullRequest.get_labels():
         if label.name.startswith(targetPrefix):
             if label.name == targetLabel:
                 needsLabel = False
             else:
-                print(f"Removing label '{label.name}")
+                print(f"Removing label '{label.name}'")
                 pullRequest.remove_from_labels(label)
     if needsLabel:
-        print(f"Adding label '{targetLabel}")
+        print(f"Adding label '{targetLabel}'")
         pullRequest.add_to_labels(targetLabel)
     return None
 
@@ -56,4 +66,4 @@ g = Github(GITHUB_TOKEN)
 repo = g.get_repo(GITHUB_REPOSITORY)
 prNum = int(PR_NUM)
 pr = repo.get_pull(prNum)
-ensureLabels(pr)
+ensureLabels(pr, repo)
